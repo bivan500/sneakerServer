@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text, Table, Column, Integer, String, MetaData, ForeignKey
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -41,12 +41,12 @@ conn = engine.connect()
 Base.metadata.create_all(engine)
 
 
-@app.route("/api/sneaker/<post_id>", methods=['GET'])
-def sneaker_id(post_id):
+@app.route("/api/sneaker/<sneaker_id>", methods=['GET'])
+def get_sneaker(sneaker_id):
     session = sessionmaker(bind=engine)
     sess = session()
     result = str()
-    for sneaker in sess.query(Sneaker).filter_by(id=post_id):
+    for sneaker in sess.query(Sneaker).filter_by(id=sneaker_id):
         result = sneaker.name
     return result
 
@@ -69,6 +69,16 @@ def register(name):
     sess.add(set_user)
     sess.commit()
     return "q"
+
+
+@app.route("/api/test", methods=['POST'])
+def post_test():
+    session = sessionmaker(bind=engine)
+    sess = session()
+    set_user = User(name=request.form['name'], password=request.form['password'], email=request.form['email'])
+    sess.add(set_user)
+    sess.commit()
+    return jsonify(request.form)
 
 
 if __name__ == '__main__':
