@@ -4,6 +4,7 @@ from sqlalchemy import create_engine, text, Table, Column, Integer, String, Meta
 from flask import Flask, jsonify
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+
 app = Flask(__name__)
 
 load_dotenv()
@@ -34,52 +35,40 @@ class Sneaker(Base):
     def __repr__(self):
         return "<User('%s','%s', '%s', '%s')>" % (self.name, self.price, self.qty, self.img)
 
+
 engine = create_engine("mysql+mysqldb://"+dbConnection)
 conn = engine.connect()
-session = sessionmaker(bind=engine)
-sess = session()
 Base.metadata.create_all(engine)
-# metadata = MetaData()
-# users_table = Table('users', metadata,
-#     Column('id', Integer, primary_key=True, unique=True, nullable=False),
-#     Column('name', String(45)),
-#     Column('fullname', String(45)),
-#     Column('password', String(45))
-# )
 
-
-# class Sneaker(Base):
-#     def __init__(self, id, name, img, qty, price):
-#         self.id = id
-#         self.name = name
-#         self.img = img
-#         self.qty = qty
-#         self.price = price
-#
-#     def __repr__(self):
-#         return "<User('%s','%s', '%s', '%s')>" % (self.name, self.price, self.qty, self.img)
-
-
-vasiaUser = User(name="vasia", password="123321", email="vasia2000@mail.ru")
-sess.add(vasiaUser)
-sess.commit()
 
 @app.route("/api/sneaker/<post_id>", methods=['GET'])
 def sneaker_id(post_id):
-    result = conn.execute(text("SELECT * FROM sneaker WHERE id=" + post_id))
-    return jsonify([dict(r) for r in result])
+    session = sessionmaker(bind=engine)
+    sess = session()
+    result = str()
+    for sneaker in sess.query(Sneaker).filter_by(id=post_id):
+        result = sneaker.name
+    return result
 
 
 @app.route("/api/sneaker/", methods=['GET'])
 def get_sneakers():
-    result = conn.execute(text("SELECT * FROM sneaker"))
-    return jsonify([dict(r) for r in result])
+    session = sessionmaker(bind=engine)
+    sess = session()
+    sneaker_list = list()
+    for instance in sess.query(Sneaker).order_by(Sneaker.id):
+        sneaker_list.append(instance.name)
+    return jsonify(sneaker_list)
 
 
-@app.route("/api/register/", methods=['POST'])
-def register():
-    result = conn.execute(text("SELECT * FROM sneaker"))
-    return jsonify([dict(r) for r in result])
+@app.route("/api/register/<name>", methods=['GET'])
+def register(name):
+    session = sessionmaker(bind=engine)
+    sess = session()
+    set_user = User(name=name, password="123321", email="vasia2000@mail.ru")
+    sess.add(set_user)
+    sess.commit()
+    return "q"
 
 
 if __name__ == '__main__':
