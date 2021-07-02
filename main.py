@@ -4,9 +4,10 @@ from sqlalchemy import create_engine, text, Table, Column, Integer, String, Meta
 from flask import Flask, jsonify, request
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from flask_bcrypt import Bcrypt
 
 app = Flask(__name__)
-
+bcrypt = Bcrypt()
 load_dotenv()
 
 dbConnection = os.getenv('DB_CONNECTION')
@@ -20,7 +21,7 @@ class User(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True)
     name = Column(String(45))
-    password = Column(String(45))
+    password = Column(String(255), unique=True)
     email = Column(String(45))
 
 
@@ -38,7 +39,7 @@ class Sneaker(Base):
 
 engine = create_engine("mysql+mysqldb://"+dbConnection)
 conn = engine.connect()
-Base.metadata.create_all(engine)
+# Base.metadata.create_all(engine)
 
 
 @app.route("/api/sneaker/<sneaker_id>", methods=['GET'])
@@ -61,24 +62,47 @@ def get_sneakers():
     return jsonify(sneaker_list)
 
 
-@app.route("/api/register/<name>", methods=['GET'])
-def register(name):
-    session = sessionmaker(bind=engine)
-    sess = session()
-    set_user = User(name=name, password="123321", email="vasia2000@mail.ru")
-    sess.add(set_user)
-    sess.commit()
-    return "q"
+# @app.route("/api/register/<name>", methods=['GET'])
+# def register(name):
+#     session = sessionmaker(bind=engine)
+#     sess = session()
+#     set_user = User(name=name, password="123321", email="vasia2000@mail.ru")
+#     sess.add(set_user)
+#     sess.commit()
+#     return "q"
 
 
-@app.route("/api/test", methods=['POST'])
+@app.route("/api/register", methods=['POST'])
 def post_test():
     session = sessionmaker(bind=engine)
     sess = session()
-    set_user = User(name=request.form['name'], password=request.form['password'], email=request.form['email'])
-    sess.add(set_user)
-    sess.commit()
-    return jsonify(request.form)
+    exist_user = sess.query(User).filter_by(email=request.form['email']).first()
+    if not exist_user:
+        if len(str(request.form['password'])) > 5:
+            if request.form['password'] == request.form['second_password']:
+                set_user = User(
+                    name=request.form['name'],
+                    password=bcrypt.generate_password_hash(request.form['password']).decode('utf-8'),
+                    email=request.form['email'])
+                sess.add(set_user)
+                sess.commit()
+                return jsonify(request.form)
+            else:
+                response_object = {
+                    'Error': 'Password must equal in two rows'
+                }
+                return response_object, 409
+        else:
+            response_object = {
+                'Error': 'Password cannot be lower than 6 words',
+            }
+            return response_object, 409
+    else:
+        response_object = {
+            'status': 'fail',
+            'message': 'User already exists. Please Log in.',
+        }
+        return response_object, 409
 
 
 if __name__ == '__main__':
